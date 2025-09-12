@@ -43,9 +43,6 @@ User Service, Transaction Service, Notification Service, each with their own dat
 
 
 ## 2. Test Pyramid Strategy (distribution & justification)
-
-Recommended **test distribution (by effort / focus)** for this microservices system:
-
 - **Unit tests — 60%**  
   run on pre-commit/devloper workstation and catches any issues with internal logic. A robust business logic for fintect is of utmost importance.
 
