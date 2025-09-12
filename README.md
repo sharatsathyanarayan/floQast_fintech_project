@@ -15,12 +15,13 @@ User Service, Transaction Service, Notification Service, each with their own dat
 
 ## 1. Quality Vision & Objectives
 
-- **Accuracy and Integrity:** Financial transactions must be processed accurately (no silent loss, duplication, or corruption). ACID-compliant database and building idempotency into its application layer.  
+- **Accuracy and Integrity:** Financial transactions must be processed consistently accurately (no silent loss, duplication, or corruption). ACID-compliant database and building idempotency into its application layer.  
 - **Availability & reliability:** System uptime to meet SLA's.  
 - **Performance & latency:** End-user transaction flows must complete within business SLOs under expected load.  
 - **Security & compliance:** Rate limiting, DDOS attacks, Captcha,OTPs enhance secuity. Encrypting PII and transaction data and complying with regulatory requirements (logging, audit).  
 - **Deployability & observability:** Pushes to production are safe, automated rollbacks possible, and issues are quickly diagnosable.  
 - **Maintainability & velocity:** Tests and automation should enable rapid safe releases with clear ownership.
+- **Disaster Recovery:** if one of the Datacenters goes down how are we going to handle it and also reroute the traffic. 
 
 **Key quality metrics / KPIs**
 - **Transaction correctness rate:** % of transactions processed without error (target ≥ 99.999% daily).  
@@ -39,3 +40,22 @@ User Service, Transaction Service, Notification Service, each with their own dat
 - P99 (99th Percentile) Latency: Only 1% of requests take longer than this value. This is crucial for identifying and addressing the worst-case scenarios and significant bottlenecks that affect the top 1% of users, even if they are a small group.
 
 ---
+
+
+## 2. Test Pyramid Strategy (distribution & justification)
+
+Recommended **test distribution (by effort / focus)** for this microservices system:
+
+- **Unit tests — 60%**  
+  run on pre-commit/devloper workstation and catches any issues with internal logic. A robust business logic for fintect is of utmost importance.
+
+- **Integration & Contract tests — 25%**  
+  Mainly to test the interfaces and the contracts with DBs, and other micro services so that we dont see/catch integration issues while deploying into various environments. (Dev, feature, staging, pre-prod and prod also performance).
+
+- **End-to-end (E2E) & UI/API flows — 10%**  
+  Complete flow testing like how a user would interact. User onboarding, account details, account summary and transactions testing.
+
+- **Non-functional tests (performance/scale/security) — 5%**  
+  Performance, load, chaos/resilence and security tests will help in determining the CPU an memory usages of the machines being deployed on and also for calculating how disaster recovery scenarios will be mitigated.
+---
+
