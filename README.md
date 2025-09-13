@@ -58,7 +58,8 @@ User Service, Transaction Service, Notification Service, each with their own dat
 
 ## 3. CI/CD Quality Gates — pipeline design & pass/fail criteria
 
-Environments; Dev(local), Feature(devlopers test their individual featutre on this pool/pod), staging (merged code to main branch), pre-prod(smoke tests, lnp) and prod
+> NOTE:Environments; Dev(local), Feature(devlopers test their individual featutre on this pool/pod), staging (merged code to main branch), pre-prod(smoke tests, lnp) and prod
+> Prod and Preprod will also have PCI and Retricted Non PCI zones. PCI zones will have heavy firewall restrictions and needs to be monitored and audited for ingress and egress and which microservices can access them.
 
 ### Pipeline stages & gates
 1. **Pre-commit / Local**
@@ -113,5 +114,69 @@ Environments; Dev(local), Feature(devlopers test their individual featutre on th
 - **Security gate:** no new high/critical vulnerabilities; unresolved medium ones must have remediation plan.  
 - **Canary gate:** error rate not exceeding baseline + threshold; business transaction failure rate < 0.1% during canary.
 
+
+---
+
+## 4. Non-Functional Testing — benchmarks and requirements
+
+> NOTE: exact numerical thresholds below are recommended starting points as seen as benchmarks for fintech companies; we need to tune them to production baselines after measuring real traffic.
+> Networking will play a huge role with firewalls and ingress and egress of production (PCI and Restricted Non PCI zones)
+
+### Performance & Scalability benchmarks
+**Key measured endpoints / flows**
+- `POST /transactions` (create & process transaction) — critical write path.
+- `GET /transactions/{id}` — read path.
+- `POST /notifications` (send notification).
+- API Gateway end-to-end (auth + routing).
+
+**Suggested SLOs / thresholds**
+- **API Gateway (end-to-end)**  
+  - p50 ≤ **100 ms**  
+  - p95 ≤ **400 ms**  
+  - p99 ≤ **800 ms**
+- **Transaction Service (write path)**  
+  - p50 ≤ **150 ms**  
+  - p95 ≤ **800 ms** (includes DB write & downstream processing)  
+  - Transaction processing completion (persisted & queued for settlement): **≤ 2s** under nominal load.
+- **Notification Service (enqueue/send)**  
+  - p95 ≤ **300 ms** for enqueuing; external delivery may be async.
+- **Throughput targets (example baseline)**  
+  - Sustained throughput: **200 tps** (transactions/sec) for business peak.  
+  - Burst handling: tolerate **1000 tps** bursts for up to 60 seconds with graceful degradation.
+- **Error budget / availability**  
+  - Availability target: **99.95%** (approx 22 minutes downtime/month).  
+  - Error budget configured per monthly window; defenses (rate limit, graceful degradation) when budget low.
+
+**Load & stress testing scenarios**
+- **Nominal load test:** run steady 1x expected peak for 1+ hour to verify stability.  
+- **Peak load test:** run 1.5–2x expected peak for 30 minutes to verify autoscaling and queuing.  
+- **Soak test:** run nominal load for 6–24 hours to surface memory leaks, connection leaks, stateful issues.  
+- **Spike test:** sudden jump to 3–5x peak for short windows to validate graceful degradation and circuit breakers.  
+- **Chaos/resilience test:** simulate instance failures, network partitions, DB failovers; verify bounded error, rollovers, retries.
+
+**Observability during tests**
+- Collect metrics: latency histograms, error rates, throughput, CPU/mem, DB latency & queue lengths.  
+- Tracing: distributed traces to find tail latency contributors.  
+- Logs: structured logs with correlation IDs.  
+- Alerts: set temporary thresholds for tests but use production alerting config for realistic responses.
+
+### Reliability & Fault-Tolerance
+- **Idempotency:** Transaction create endpoint idempotent with client-provided idempotency key (verify with integration tests).  
+- **Exactly-once / at-least-once guarantees:** define for each flow (e.g., transaction must be exactly-once; notification may be at-least-once) and test accordingly.  
+- **Retries & backoff:** Clients should observe circuit breaker patterns; simulate downstream slowness and verify correct backoff.  
+- **DB failover:** Tests that simulate Mongo primary failover; ensure app reconnects and data integrity remains.
+- **Disaster recovery:** Tests that simulate if datacenters go down.
+
+### Security & Compliance testing
+- **SAST** (static analysis) in PRs and builds.  
+- **DAST** (dynamic scans) in staging for common OWASP Top 10 vulnerabilities.  
+- **Pen-testing / Vulnerability assessments** scheduled periodically and after major changes.  
+- **Encryption & data protection** tests: confirm TLS enforced, data at rest encryption, proper key access controls.  
+- **Access control tests:** RBAC/permission matrix tests for protected endpoints.
+
+### Observability & Monitoring tests
+- Validate that traces and metrics include:
+  - Request correlation ID through API Gateway -> services.  
+  - Key business metrics exported: transaction count, average processing time, failed transactions.   
 
 ---
