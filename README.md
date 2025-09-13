@@ -56,3 +56,51 @@ User Service, Transaction Service, Notification Service, each with their own dat
   Performance, load, chaos/resilence and security tests will help in determining the CPU an memory usages of the machines being deployed on and also for calculating how disaster recovery scenarios will be mitigated.
 ---
 
+## 3. CI/CD Quality Gates — pipeline design & pass/fail criteria
+
+Environments; Dev(local), Feature(devlopers test their individual featutre on this pool/pod), staging (merged code to main branch), pre-prod(smoke tests, lnp) and prod
+
+### Pipeline stages & gates
+1. **Pre-commit / Local**
+   - Gate: All unit tests pass locally; formatting, static analysis can be done here using IDE plugins.
+   - Failure → block commit.
+
+2. **Pull Request (PR) Validation**
+   - Runs: unit tests, static analysis, code coverage(cobertura,jacoco and sonar), integration tests and SAST/DAST quick scan.
+   - Gate criteria:
+     - Unit tests: **pass 100%** (no failing tests).
+     - Test coverage on new/changed files: >= **80%** (or at least not decreasing global coverage).
+     - Maven dependencies added needs to be reviewed for cylic dependndancies and vulnerabilities.
+     - This stage is crucial and at least 2 peers should be reviewing the code.
+   - Failure → block merge.
+
+3. **Merge / Build/ staging**
+   - Runs: full unit suite, full integration tests (spinning ephemeral DB and Redis containers), contract tests, mutation/contract checks.
+   - Gate criteria:
+     - All tests pass.
+     - Contract tests: consumer expectations satisfied (PACT/Dredd/Swagger).
+     - Image build success and image scanning: zero critical vulnerabilities.
+   - Failure → block deployment to staging.
+
+4. **Pre-Production/LnP**
+   - Runs: E2E smoke tests, data migration tests (if applicable), DAST, performance sanity tests, chaos tests (light).
+   - Gate criteria:
+     - E2E smoke: all critical flows succeed.
+     - Performance: no regressions beyond a small delta (e.g., < 10% worse than baseline). See thresholds below.
+     - DAST/Security: no high/critical findings untriaged.
+     - Observability checks: traces, metrics, and logs available.
+   - Failure → rollback or block promotion to production.
+
+5. **Production Promotion / Canary**
+   - Strategy: Gradual traffic ramp (canary or blue/green) with automated monitoring for key metrics.  
+   - Canary gate criteria (during canary window, e.g., 15–30 minutes):
+     - Error rate (5xx) on canary vs baseline: no > 2x increase and absolute error rate < 0.5%.  
+     - Latency: p95 no more than 20% above baseline; absolute below hard SLO.  
+     - Business KPI (transaction success rate): within error budget.  
+   - If criteria fail → automatic rollback.
+
+6. **Post-Deploy / Continuous Monitoring**
+   - Run synthetic probes + health checks + alerting on SLO breaches.
+   - Weekly/monthly security scans and dependency checks.
+
+---
