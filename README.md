@@ -62,7 +62,7 @@ Environments; Dev(local), Feature(devlopers test their individual featutre on th
 
 ### Pipeline stages & gates
 1. **Pre-commit / Local**
-   - Gate: All unit tests pass locally; formatting, static analysis can be done here using IDE plugins.
+   - Gate: **100% unit tests pass locally**; formatting, static analysis can be done here using IDE plugins.
    - Failure → block commit.
 
 2. **Pull Request (PR) Validation**
@@ -102,5 +102,16 @@ Environments; Dev(local), Feature(devlopers test their individual featutre on th
 6. **Post-Deploy / Continuous Monitoring**
    - Run synthetic probes + health checks + alerting on SLO breaches.
    - Weekly/monthly security scans and dependency checks.
+
+### Specific pass/fail criteria
+- **Unit tests:** 100% pass; fail on flaky tests >1% occurrence until fixed.  
+- **Coverage:** Global coverage ≥ 80%; critical modules ≥ 90%.  
+- **Contract tests:** zero contract violations.  
+- **Integration tests:** pass all functional scenarios.  
+- **E2E smoke:** 100% critical path success.  
+- **Performance gate (staging):** no 10%+ regression in p95 latency vs baseline for core APIs.  
+- **Security gate:** no new high/critical vulnerabilities; unresolved medium ones must have remediation plan.  
+- **Canary gate:** error rate not exceeding baseline + threshold; business transaction failure rate < 0.1% during canary.
+
 
 ---
